@@ -1,10 +1,12 @@
-package main
+package views
 
 import (
 	"fmt"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/greycodee/gredis/core"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -25,7 +27,7 @@ type model struct {
 	inputs     []textinput.Model
 }
 
-func initialModel() model {
+func InitialModel() model {
 	m := model{
 		inputs: make([]textinput.Model, 4),
 	}
@@ -89,10 +91,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.inputs[3].Placeholder="Please enter 0-60 databases!"
 					return m.focusesUpdate(nil)
 				}else {
-					//for _,i := range m.inputs {
-					//	fmt.Println(i.Value())
-					//}
-					// TODO 跳转
+					redisClient := &core.RedisClient{}
+					redisClient.Open(m.inputs[0].Value()+":"+m.inputs[1].Value())
+					fmt.Println(redisClient.ExecCMD("select","0"))
+					p2 := tea.NewProgram(initMainPage(redisClient),tea.WithAltScreen())
+					if err := p2.Start(); err != nil {
+						fmt.Printf("could not start program: %s\n", err)
+						os.Exit(1)
+					}
 					return m, tea.Quit
 				}
 
@@ -153,22 +159,22 @@ func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
 
 func (m model) View() string {
 
-
-	var b strings.Builder
-	for i := range m.inputs {
-		b.WriteString(m.inputs[i].View())
-		if i < len(m.inputs)-1 {
-			b.WriteRune('\n')
+		var b strings.Builder
+		for i := range m.inputs {
+			b.WriteString(m.inputs[i].View())
+			if i < len(m.inputs)-1 {
+				b.WriteRune('\n')
+			}
 		}
-	}
 
-	button := &blurredButton
-	if m.focusIndex == len(m.inputs) {
-		button = &focusedButton
-	}
-	fmt.Fprintf(&b, "\n\n%s\n\n", *button)
+		button := &blurredButton
+		if m.focusIndex == len(m.inputs) {
+			button = &focusedButton
+		}
+		fmt.Fprintf(&b, "\n\n%s\n\n", *button)
 
-	b.WriteString(helpStyle.Render("hi, welcome come to use gredis!"))
+		b.WriteString(helpStyle.Render("hi, welcome come to use gredis!"))
 
-	return b.String()
+		return b.String()
+
 }

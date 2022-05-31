@@ -6,4 +6,5 @@ a redis client for terminal
 - 登陆跳转
 - tui
 - 命令执行历史
+- 连接状态栏
 
