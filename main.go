@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	p1 := tea.NewProgram(views.InitialModel())
+	p1 := tea.NewProgram(views.InitialModel(),tea.WithAltScreen())
 	if err := p1.Start(); err != nil {
 		fmt.Printf("could not start program: %s\n", err)
 		os.Exit(1)

@@ -103,12 +103,25 @@ func (m loginPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}else {
 					redisClient := &core.RedisClient{}
 					redisClient.Open(m.serverAddr+":"+m.serverPort)
-					p2 := tea.NewProgram(initMainPage(redisClient,m.serverAddr,m.serverPort,m.databases),tea.WithAltScreen())
-					if err := p2.Start(); err != nil {
-						fmt.Printf("could not start program: %s\n", err)
-						os.Exit(1)
+					// 登陆认证 auth
+					if m.password != ""{
+						loginResp := redisClient.ExecCMD("auth",m.password)
+						if string(loginResp)!="OK" {
+							// 登陆失败
+							m.focusIndex = 2
+							m.inputs[2].SetValue("")
+							m.inputs[2].Placeholder="Password error!"
+							return m.focusesUpdate(nil)
+						}
+					}else{
+						p2 := tea.NewProgram(initMainPage(redisClient,m.serverAddr,m.serverPort,m.databases),tea.WithAltScreen())
+						if err := p2.Start(); err != nil {
+							fmt.Printf("could not start program: %s\n", err)
+							os.Exit(1)
+						}
+						return m, tea.Quit
 					}
-					return m, tea.Quit
+
 				}
 
 			}
