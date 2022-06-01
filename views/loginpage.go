@@ -20,16 +20,26 @@ var (
 
 	focusedButton = focusedStyle.Copy().Render("[ Submit ]")
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
+
+	defaultPort			= "6379"
+	defaultDatabases	= "0"
 )
 
-type model struct {
+type loginPage struct {
 	focusIndex int
 	inputs     []textinput.Model
+	serverAddr  string
+	password    string
+	serverPort  string
+	databases   string
 }
 
-func InitialModel() model {
-	m := model{
+func InitialModel() loginPage {
+	m := loginPage{
 		inputs: make([]textinput.Model, 4),
+		serverAddr: "127.0.0.1",
+		serverPort: "6379",
+		databases: "0",
 	}
 
 	var t textinput.Model
@@ -61,11 +71,11 @@ func InitialModel() model {
 
 	return m
 }
-func (m model) Init() tea.Cmd {
+func (m loginPage) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m loginPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -92,9 +102,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m.focusesUpdate(nil)
 				}else {
 					redisClient := &core.RedisClient{}
-					redisClient.Open(m.inputs[0].Value()+":"+m.inputs[1].Value())
-					fmt.Println(redisClient.ExecCMD("select","0"))
-					p2 := tea.NewProgram(initMainPage(redisClient),tea.WithAltScreen())
+					redisClient.Open(m.serverAddr+":"+m.serverPort)
+					p2 := tea.NewProgram(initMainPage(redisClient,m.serverAddr,m.serverPort,m.databases),tea.WithAltScreen())
 					if err := p2.Start(); err != nil {
 						fmt.Printf("could not start program: %s\n", err)
 						os.Exit(1)
@@ -121,7 +130,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) focusesUpdate(cmds []tea.Cmd) (tea.Model, tea.Cmd) {
+func (m loginPage) focusesUpdate(cmds []tea.Cmd) (tea.Model, tea.Cmd) {
 	if m.focusIndex > len(m.inputs) {
 		m.focusIndex = 0
 	} else if m.focusIndex < 0 {
@@ -145,19 +154,31 @@ func (m model) focusesUpdate(cmds []tea.Cmd) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(innerCmds...)
 }
 
-func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
+func (m *loginPage) updateInputs(msg tea.Msg) tea.Cmd {
 	var cmds = make([]tea.Cmd, len(m.inputs))
-
-	// Only text inputs with Focus() set will respond, so it's safe to simply
-	// update all of them here without any further logic.
 	for i := range m.inputs {
 		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
 	}
-
+	if m.inputs[0].Value() != "" {
+		m.serverAddr = m.inputs[0].Value()
+	}
+	if m.inputs[1].Value() != "" {
+		m.serverPort = m.inputs[1].Value()
+	}else{
+		m.serverPort = defaultPort
+	}
+	if m.inputs[2].Value() != "" {
+		m.password = m.inputs[2].Value()
+	}
+	if m.inputs[3].Value() != "" {
+		m.databases = m.inputs[3].Value()
+	}else {
+		m.databases = defaultDatabases
+	}
 	return tea.Batch(cmds...)
 }
 
-func (m model) View() string {
+func (m loginPage) View() string {
 
 		var b strings.Builder
 		for i := range m.inputs {

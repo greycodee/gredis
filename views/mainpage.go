@@ -1,10 +1,12 @@
 package views
 
 import (
+	"fmt"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/greycodee/gredis/core"
+	"github.com/greycodee/gredis/core/cmd"
 	"strings"
 )
 
@@ -13,19 +15,29 @@ type mainPage struct {
 	history	[]string
 	redisCli *core.RedisClient
 	cmdResult string
+	serverAddr string
+	serverPort string
+	databases string
 }
 
-func initMainPage(redisCli *core.RedisClient) mainPage {
+func initMainPage(redisCli *core.RedisClient,addr string,port string, databases string,) mainPage {
 	t := textinput.New()
 	t.Focus()
-	h := []string{"select 0","get name"}
-	mp := mainPage{cmdInput: t,history: h,redisCli: redisCli}
+	h := make([]string,0)
+	mp := mainPage{
+		cmdInput: t,
+		history: h,
+		redisCli: redisCli,
+		serverAddr: addr,
+	serverPort: port,
+	databases: databases}
 	return mp
 }
 
 func (mp mainPage) Init()  tea.Cmd{
 	mp.cmdInput = textinput.New()
 	mp.cmdInput.Focus()
+	mp.redisCli.ExecCMD("select",mp.databases)
 	return nil
 }
 
@@ -34,22 +46,27 @@ func (mp mainPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
+			mp.redisCli.Shutdown()
 			return mp, tea.Quit
 		case "enter":
 			if len(mp.history)+1>10 {
 				mp.history = mp.history[1:]
 			}
-			mp.cmdResult = string(mp.redisCli.ExecCMD(mp.cmdInput.Value()))
+			cmdByte,selectDB,db := cmd.GetCmdByte(mp.cmdInput.Value())
+
+			mp.cmdResult = string(mp.redisCli.ExecCMDByte(cmdByte))
+			if selectDB && mp.cmdResult=="OK"{
+				mp.databases = db
+			}
 			mp.history = append(mp.history, mp.cmdInput.Value())
 			mp.cmdInput.Reset()
 
-			// TODO 执行命令
 			return mp,nil
 
 		}
 	}
-	cmd := mp.updateInputs(msg)
-	return mp,cmd
+	inputs := mp.updateInputs(msg)
+	return mp, inputs
 }
 
 func (mp mainPage) View() string {
@@ -57,13 +74,14 @@ func (mp mainPage) View() string {
 }
 
 func (mp *mainPage) updateInputs(msg tea.Msg) tea.Cmd {
-	var cmd tea.Cmd
-	mp.cmdInput,cmd = mp.cmdInput.Update(msg)
+	var c tea.Cmd
+	mp.cmdInput, c = mp.cmdInput.Update(msg)
 
-	return tea.Batch(cmd)
+	return tea.Batch(c)
 }
 
 func (mp *mainPage) mainView() string {
+	statusContent := fmt.Sprintf("Address: %s\nPort: %s\nDatabases: %s",mp.serverAddr,mp.serverPort,mp.databases)
 	status := lipgloss.NewStyle().
 		MarginLeft(1).
 		MarginRight(5).
@@ -73,7 +91,7 @@ func (mp *mainPage) mainView() string {
 		Width(50).
 		Border(lipgloss.NormalBorder()).
 		Foreground(lipgloss.Color("#eedd22")).
-		SetString("Address:localhost.com:6379\nUsername:root\nDatabases:0")
+		SetString(statusContent)
 
 	h := strings.Builder{}
 	for _,v := range mp.history{
@@ -90,7 +108,7 @@ func (mp *mainPage) mainView() string {
 		Foreground(lipgloss.Color("#eedd22")).
 		SetString(h.String())
 
-	cmd := lipgloss.NewStyle().
+	cmdInput := lipgloss.NewStyle().
 		MarginLeft(1).
 		MarginRight(5).
 		Padding(0, 1).
@@ -113,7 +131,7 @@ func (mp *mainPage) mainView() string {
 		SetString(mp.cmdResult)
 
 
-	mm := lipgloss.JoinVertical(lipgloss.Left,status.String(),cmdHistory.String(),cmd.String())
+	mm := lipgloss.JoinVertical(lipgloss.Left,status.String(),cmdHistory.String(),cmdInput.String())
 	m2 := lipgloss.JoinHorizontal(lipgloss.Left,mm,content.String())
 	return m2
 }

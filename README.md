@@ -8,3 +8,7 @@ a redis client for terminal
 - 命令执行历史
 - 连接状态栏
 
+## 界面
+![img_1.png](img_1.png)
+![img.png](img.png)
+

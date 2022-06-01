@@ -65,6 +65,22 @@ func (c *RedisClient) ExecCMD(cmd ...string)  (resp []byte){
 	return c.readConn()
 }
 
+func (c *RedisClient) ExecCMDByte(cmdByte []byte)  (resp []byte){
+	_, err := c.conn.Write(cmdByte)
+	if err != nil {
+		return
+	}
+	return c.readConn()
+}
+
+func (c *RedisClient) Shutdown()  {
+	err := c.conn.Close()
+	if err != nil {
+		panic("redis connect close failed!")
+		return
+	}
+}
+
 func (c RedisClient) buildCommand(cmd ...string) []byte {
 	cmdLen := strconv.Itoa(len(cmd))
 	cmdBytes := make([]byte,0)

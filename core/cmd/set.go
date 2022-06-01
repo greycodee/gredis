@@ -1,16 +1,15 @@
 package cmd
 
-import (
-	"fmt"
-)
+func set() func(c string) []byte {
+	return func(c string) []byte {
+		cmdList := readCmdString(c)
+		return buildCommand(cmdList...)
+	}
+}
 
-func set(c string)  {
-	// 读取字符
-	for _,r := range c{
-		if r == 32{
-			// 空格
-			continue
-		}
-		fmt.Println(r)
+func get() func(c string) []byte {
+	return func(c string) []byte {
+		cmdList := readCmdString(c)
+		return buildCommand(cmdList...)
 	}
 }
