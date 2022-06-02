@@ -52,15 +52,16 @@ func (mp mainPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(mp.history)+1>10 {
 				mp.history = mp.history[1:]
 			}
-			cmdByte,selectDB,db := cmd.GetCmdByte(mp.cmdInput.Value())
+			if strings.TrimSpace(mp.cmdInput.Value()) != ""{
+				cmdByte,selectDB,db := cmd.GetCmdByte(mp.cmdInput.Value())
 
-			mp.cmdResult = string(mp.redisCli.ExecCMDByte(cmdByte))
-			if selectDB && mp.cmdResult=="OK"{
-				mp.databases = db
+				mp.cmdResult = string(mp.redisCli.ExecCMDByte(cmdByte))
+				if selectDB && mp.cmdResult=="OK"{
+					mp.databases = db
+				}
+				mp.history = append(mp.history, mp.cmdInput.Value())
 			}
-			mp.history = append(mp.history, mp.cmdInput.Value())
 			mp.cmdInput.Reset()
-
 			return mp,nil
 
 		}

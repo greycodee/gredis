@@ -12,8 +12,9 @@ type RedisClient struct {
 	pipeline []byte
 }
 
-func (c *RedisClient) Open(addr string)  {
-	c.conn, _ = net.Dial("tcp",addr)
+func (c *RedisClient) Open(addr string)  (err error) {
+	c.conn, err = net.Dial("tcp",addr)
+	return
 }
 
 var	crlf = []byte{0x0d,0x0a}

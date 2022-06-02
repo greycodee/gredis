@@ -102,7 +102,15 @@ func (m loginPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m.focusesUpdate(nil)
 				}else {
 					redisClient := &core.RedisClient{}
-					redisClient.Open(m.serverAddr+":"+m.serverPort)
+					err := redisClient.Open(m.serverAddr + ":" + m.serverPort)
+					if err != nil {
+						m.focusIndex = 0
+						m.inputs[0].SetValue("")
+						m.inputs[0].Placeholder="Host or Port error!"
+						m.inputs[1].SetValue("")
+						m.inputs[1].Placeholder="Host or Port error!"
+						return m.focusesUpdate(nil)
+					}
 					// 登陆认证 auth
 					if m.password != ""{
 						loginResp := redisClient.ExecCMD("auth",m.password)
@@ -172,17 +180,13 @@ func (m *loginPage) updateInputs(msg tea.Msg) tea.Cmd {
 	for i := range m.inputs {
 		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
 	}
-	if m.inputs[0].Value() != "" {
-		m.serverAddr = m.inputs[0].Value()
-	}
+	m.serverAddr = m.inputs[0].Value()
 	if m.inputs[1].Value() != "" {
 		m.serverPort = m.inputs[1].Value()
 	}else{
 		m.serverPort = defaultPort
 	}
-	if m.inputs[2].Value() != "" {
-		m.password = m.inputs[2].Value()
-	}
+	m.password = m.inputs[2].Value()
 	if m.inputs[3].Value() != "" {
 		m.databases = m.inputs[3].Value()
 	}else {
