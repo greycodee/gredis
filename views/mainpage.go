@@ -134,5 +134,6 @@ func (mp *mainPage) mainView() string {
 
 	mm := lipgloss.JoinVertical(lipgloss.Left,status.String(),cmdHistory.String(),cmdInput.String())
 	m2 := lipgloss.JoinHorizontal(lipgloss.Left,mm,content.String())
+	//m2 := lipgloss.PlaceHorizontal(10,lipgloss.Left,mm)
 	return m2
 }
