@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -58,7 +59,7 @@ func (c RedisClient) handleResp(data []byte)  (resp []byte,endPoint int64){
 	return
 }
 
-func (c *RedisClient) ExecCMD(cmd ...string)  (resp []byte){
+func (c *RedisClient) ExecCMD(cmd ...string)  (resp []byte,dump string){
 	_, err := c.conn.Write(c.buildCommand(cmd...))
 	if err != nil {
 		return
@@ -66,7 +67,7 @@ func (c *RedisClient) ExecCMD(cmd ...string)  (resp []byte){
 	return c.readConn()
 }
 
-func (c *RedisClient) ExecCMDByte(cmdByte []byte)  (resp []byte){
+func (c *RedisClient) ExecCMDByte(cmdByte []byte)  (resp []byte,dump string){
 	_, err := c.conn.Write(cmdByte)
 	if err != nil {
 		return
@@ -107,11 +108,11 @@ func (c *RedisClient) commonRequest(cmdLen string,cmd []byte) []byte {
 }
 
 
-func (c *RedisClient) readConn() []byte {
+func (c *RedisClient) readConn() ([]byte,string) {
 	resp := make([]byte,1024)
 	n, _ := c.conn.Read(resp)
 	r,_ := c.handleResp(resp[:n])
-	return r
+	return r,hex.Dump(resp[:n])
 }
 
 func (c *RedisClient) readPipelineConn() []byte {

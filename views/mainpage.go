@@ -55,7 +55,8 @@ func (mp mainPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if strings.TrimSpace(mp.cmdInput.Value()) != ""{
 				cmdByte,selectDB,db := cmd.GetCmdByte(mp.cmdInput.Value())
 
-				mp.cmdResult = string(mp.redisCli.ExecCMDByte(cmdByte))
+				resp,_ := mp.redisCli.ExecCMDByte(cmdByte)
+				mp.cmdResult = string(resp)
 				if selectDB && mp.cmdResult=="OK"{
 					mp.databases = db
 				}
