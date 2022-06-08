@@ -7,7 +7,6 @@ import (
 	"github.com/greycodee/gredis/core/cmd"
 	"github.com/rivo/tview"
 	"strings"
-	"time"
 )
 
 type TUI struct {
@@ -26,6 +25,7 @@ type TUI struct {
 
 	focusIndex		int
 	allWidgets		[]tview.Primitive
+	historyIndex	int
 }
 
 type RedisServer struct {
@@ -163,7 +163,13 @@ func (t *TUI) inputDoneFunc(key tcell.Key)  {
 		t.flushHistory()
 	}else if key == tcell.KeyUp{
 		// 选择历史命令
-		t.cmdInputView.SetText(time.Now().String())
+		if t.historyIndex >= len(t.TUIData.CmdHistory) {
+			t.historyIndex = 0
+		}
+		if len(t.TUIData.CmdHistory)>0 {
+			t.cmdInputView.SetText(t.TUIData.CmdHistory[len(t.TUIData.CmdHistory)-t.historyIndex-1])
+		}
+		t.historyIndex++
 	}
 }
 
@@ -183,5 +189,6 @@ func (t *TUI) flushHistory()  {
 		cmdHistory1.WriteString("\n")
 	}
 	t.cmdHistoryView.SetText(cmdHistory1.String())
+	t.historyIndex = 0
 	t.cmdInputView.SetText("")
 }
