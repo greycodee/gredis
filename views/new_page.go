@@ -69,7 +69,7 @@ func (t *TUI) StartTUI() {
 	// 初始化历史记录
 	t.cmdHistoryView = tview.NewTextView()
 	t.cmdHistoryView.SetBorder(true)
-	t.cmdHistoryView.SetTitle("Redis Server Info")
+	t.cmdHistoryView.SetTitle("CMD History")
 
 	// 初始化命令输入框
 	t.cmdInputView = tview.NewInputField().SetLabel(">")
@@ -162,14 +162,25 @@ func (t *TUI) inputDoneFunc(key tcell.Key)  {
 		}
 		t.flushHistory()
 	}else if key == tcell.KeyUp{
+		t.historyIndex++
 		// 选择历史命令
-		if t.historyIndex >= len(t.TUIData.CmdHistory) {
-			t.historyIndex = 0
+		if t.historyIndex > len(t.TUIData.CmdHistory) {
+			t.historyIndex = 1
+		}
+
+		if len(t.TUIData.CmdHistory)>0 {
+			t.cmdInputView.SetText(t.TUIData.CmdHistory[len(t.TUIData.CmdHistory)-t.historyIndex])
+		}
+
+	}else if key == tcell.KeyDown{
+		t.historyIndex--
+		if t.historyIndex < 1 {
+			t.historyIndex = 1
 		}
 		if len(t.TUIData.CmdHistory)>0 {
-			t.cmdInputView.SetText(t.TUIData.CmdHistory[len(t.TUIData.CmdHistory)-t.historyIndex-1])
+			t.cmdInputView.SetText(t.TUIData.CmdHistory[len(t.TUIData.CmdHistory)-t.historyIndex])
 		}
-		t.historyIndex++
+
 	}
 }
 
