@@ -52,7 +52,7 @@ func readCmdString(cmd string) []string {
 	tmp := make([]byte,0)
 
 	quot := false
-	for _,r := range cmd{
+	for _,r := range []byte(cmd){
 		// 34 双引号
 		if r == 34 {
 			quot = !quot
@@ -75,7 +75,7 @@ func readCmdString(cmd string) []string {
 				continue
 			}
 		}
-		tmp = append(tmp, byte(r))
+		tmp = append(tmp, r)
 	}
 	if len(tmp)>0 {
 		result = append(result, string(tmp))
