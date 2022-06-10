@@ -39,7 +39,7 @@ func login() core.RedisClient {
 	}
 	// 登陆认证 auth
 	if *passwd != ""{
-		loginResp,_ := redisClient.ExecCMD("auth",*passwd)
+		loginResp := redisClient.ExecCMD("auth",*passwd)
 		if string(loginResp)!="OK" {
 			// 登陆失败
 			panic("password error!")
@@ -47,8 +47,8 @@ func login() core.RedisClient {
 	}
 
 	// 选择 db
-	resp,_ := redisClient.ExecCMD("select",*db)
-	if string(resp)!="OK" {
+	resp := redisClient.ExecCMD("select",*db)
+	if string(resp)!="+OK" {
 		// 选择db失败
 		panic("select database failed!")
 	}

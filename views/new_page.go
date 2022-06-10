@@ -15,7 +15,6 @@ type TUI struct {
 	cmdInputView	*tview.InputField
 	keyInfoView		*tview.TextView
 	keyValueView	*tview.TextView
-	keyHexValueView	*tview.TextView
 
 	mainPage 		*tview.Flex
 
@@ -37,7 +36,7 @@ type RedisServer struct {
 
 type KeyInfo struct {
 	TTL 	int64
-	Key 	string
+	KeyName string
 	KeyType KeyType
 }
 
@@ -87,10 +86,6 @@ func (t *TUI) StartTUI() {
 	t.keyValueView.SetBorder(true)
 	t.keyValueView.SetTitle("Value")
 
-	// 初始化 HEX Value 界面
-	t.keyHexValueView = tview.NewTextView()
-	t.keyHexValueView.SetBorder(true)
-	t.keyHexValueView.SetTitle("HEX Value")
 
 	t.allWidgets = []tview.Primitive{
 		t.cmdInputView,
@@ -98,7 +93,6 @@ func (t *TUI) StartTUI() {
 		t.cmdHistoryView,
 		t.keyInfoView,
 		t.keyValueView,
-		t.keyHexValueView,
 	}
 
 	// 初始化布局
@@ -109,8 +103,7 @@ func (t *TUI) StartTUI() {
 		AddItem(t.cmdInputView,3,1,true)
 	right := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(t.keyInfoView,0,2,false).
-		AddItem(t.keyValueView,0,6,false).
-		AddItem(t.keyHexValueView,0,2,false)
+		AddItem(t.keyValueView,0,8,false)
 	t.mainPage.AddItem(left,0,1,true).AddItem(right,0,2,false)
 
 
@@ -152,15 +145,15 @@ func (t *TUI) inputDoneFunc(key tcell.Key)  {
 		if strings.TrimSpace(t.cmdInputView.GetText()) != ""{
 			cmdByte,selectDB,db := cmd.GetCmdByte(t.cmdInputView.GetText())
 
-			result,dump := t.RedisServer.Conn.ExecCMDByte(cmdByte)
+			result := t.RedisServer.Conn.ExecCMDByte(cmdByte)
 			if selectDB && string(result)=="OK"{
 				t.RedisServer.DB=db
 				t.refreshServerInfo()
 			}
+			t.keyValueView.Clear()
 			t.keyValueView.SetText(string(result))
-			t.keyHexValueView.SetText(dump)
 		}
-		t.flushHistory()
+		t.refreshCMDHistory()
 	}else if key == tcell.KeyUp{
 		t.historyIndex++
 		// 选择历史命令
@@ -192,7 +185,7 @@ func (t TUI) refreshServerInfo()  {
 	t.serverInfoView.SetText(serverInfo)
 }
 
-func (t *TUI) flushHistory()  {
+func (t *TUI) refreshCMDHistory()  {
 	t.TUIData.CmdHistory = append(t.TUIData.CmdHistory, t.cmdInputView.GetText())
 	cmdHistory1 := strings.Builder{}
 	for _,v := range t.TUIData.CmdHistory {
@@ -202,4 +195,10 @@ func (t *TUI) flushHistory()  {
 	t.cmdHistoryView.SetText(cmdHistory1.String())
 	t.historyIndex = 0
 	t.cmdInputView.SetText("")
+}
+
+func (t *TUI) refreshKeyInfo()  {
+	// 查询TTL
+	// 查询类型
+	//
 }

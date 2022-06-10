@@ -113,7 +113,7 @@ func (m loginPage) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					// 登陆认证 auth
 					if m.password != ""{
-						loginResp,_ := redisClient.ExecCMD("auth",m.password)
+						loginResp := redisClient.ExecCMD("auth",m.password)
 						if string(loginResp)!="OK" {
 							// 登陆失败
 							m.focusIndex = 2

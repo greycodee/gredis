@@ -1,74 +1,87 @@
 package core
 
 import (
-	"encoding/hex"
+	"bufio"
 	"encoding/json"
-	"fmt"
 	"net"
 	"strconv"
+	"strings"
 )
 
 type RedisClient struct {
 	conn net.Conn
 	pipeline []byte
+
+	br  *bufio.Reader
+	bw 	*bufio.Writer
 }
 
 func (c *RedisClient) Open(addr string)  (err error) {
 	c.conn, err = net.Dial("tcp",addr)
+	c.br = bufio.NewReader(c.conn)
+	c.bw = bufio.NewWriter(c.conn)
 	return
 }
 
 var	crlf = []byte{0x0d,0x0a}
 
-func (c RedisClient) handleResp(data []byte)  (resp []byte,endPoint int64){
+func (c RedisClient) handleResp()  (resp []byte) {
 	//flag := 0x11
-	switch data[0] {
+	flag, err := c.br.Peek(1)
+
+	if err != nil {
+		return
+	}
+	switch flag[0] {
 	case 0x2b:
 		// + Simple Strings
-		s,end := c.parseSimpleString(data)
+		s := c.parseSimpleString()
 		resp = []byte(s)
-		endPoint = end
 		break
 	case 0x2d:
 		// - Errors
-		e,end := c.parseErrors(data)
+		e := c.parseErrors()
 		resp = []byte(e)
-		endPoint = end
 		break
 	case 0x3a:
 		// : Integers
-		i,end := c.parseIntegers(data)
+		i := c.parseIntegers()
 		//resp = make([]byte, 8)
 		//binary.LittleEndian.PutUint64(resp,uint64(i))
 		resp = []byte(strconv.Itoa(int(i)))
-		endPoint = end
 		break
 	case 0x24:
 		// $ Bulk Strings
-		s,end := c.parseBulkStrings(data)
+		s := c.parseBulkStrings()
 		resp = []byte(s)
-		endPoint = end
 		break
 	case 0x2a:
 		// * Arrays
-		arrays,end := c.parseArrays(data)
-		resp,_ = json.Marshal(arrays)
-		endPoint = end
+		resp = []byte(c.parseArrays())
+		//resp,_ = json.Marshal(arrays)
 		break
 	}
 	return
 }
 
-func (c *RedisClient) ExecCMD(cmd ...string)  (resp []byte,dump string){
-	_, err := c.conn.Write(c.buildCommand(cmd...))
+func (c *RedisClient) ExecCMD(cmd ...string)  (resp []byte){
+	_, err := c.bw.Write(c.buildCommand(cmd...))
+	if err != nil {
+		return
+	}
+	err = c.bw.Flush()
 	if err != nil {
 		return
 	}
 	return c.readConn()
 }
 
-func (c *RedisClient) ExecCMDByte(cmdByte []byte)  (resp []byte,dump string){
-	_, err := c.conn.Write(cmdByte)
+func (c *RedisClient) ExecCMDByte(cmdByte []byte)  (resp []byte){
+	_, err := c.bw.Write(cmdByte)
+	if err != nil {
+		return
+	}
+	err = c.bw.Flush()
 	if err != nil {
 		return
 	}
@@ -108,11 +121,9 @@ func (c *RedisClient) commonRequest(cmdLen string,cmd []byte) []byte {
 }
 
 
-func (c *RedisClient) readConn() ([]byte,string) {
-	resp := make([]byte,1024)
-	n, _ := c.conn.Read(resp)
-	r,_ := c.handleResp(resp[:n])
-	return r,hex.Dump(resp[:n])
+func (c *RedisClient) readConn() ([]byte) {
+	c.br.Reset(c.conn)
+	return c.handleResp()
 }
 
 func (c *RedisClient) readPipelineConn() []byte {
@@ -122,9 +133,7 @@ func (c *RedisClient) readPipelineConn() []byte {
 	index := 0
 	result := make([]string,0)
 	for index < n{
-		r,end := c.handleResp(resp[index:])
-		result = append(result, string(r))
-		index += int(end)+1
+		result = append(result, string(c.handleResp()))
 	}
 	marshal, err := json.Marshal(result)
 	if err != nil {
@@ -133,72 +142,64 @@ func (c *RedisClient) readPipelineConn() []byte {
 	return marshal
 }
 
-func (c RedisClient) parseSimpleString(data []byte) (s string,endIndex int64) {
-	return c.simpleParse(data)
+func (c RedisClient) parseSimpleString() string {
+	return c.simpleParse()
 }
-func (c RedisClient) parseIntegers(data []byte) (i int64,endIndex int64) {
-	d,endPoint := c.simpleParse(data)
+func (c RedisClient) parseIntegers() int64 {
+	d := c.simpleParse()
 	parseInt, _ := strconv.ParseInt(d, 10, 64)
-	return parseInt,endPoint
+	return parseInt
 }
-func (c RedisClient) parseErrors(data []byte) (s string,endIndex int64){
-	return c.simpleParse(data)
+func (c RedisClient) parseErrors() string{
+	return c.simpleParse()
 }
 
-func (c RedisClient) simpleParse(data []byte) (string,int64)  {
-	s := make([]byte,0)
-	for i,v :=range data[1:]{
-		if v == 0x0d {
-			return string(s), int64(i + 2)
+func (c RedisClient) simpleParse() string  {
+	for {
+		token, _ , err := c.br.ReadLine()
+		if len(token) > 0 {
+			//fmt.Printf("Token (ReadLine): %q\n", token)
+			return string(token)
 		}
-		s = append(s, v)
-	}
-	return "",0
-}
-
-func (c RedisClient) parseBulkStrings(data []byte) (s string,endIndex int64) {
-	lenData := make([]byte,0)
-	data = data[1:]
-	index := 0
-	for  i,v:= range data{
-		if v ==0x0d {
-			index = i+2
+		if err != nil {
 			break
 		}
-		lenData = append(lenData, v)
 	}
-	l, _ := strconv.ParseInt(string(lenData),10,64)
+	return ""
+}
+
+func (c RedisClient) parseBulkStrings() string {
+	// 获取字节长度
+	strLen, _, err := c.br.ReadLine()
+	if err != nil {
+		return ""
+	}
+	l, _ := strconv.ParseInt(string(strLen[1:]),10,64)
 	if l == -1 {
-		return *new(string), int64(index)
-	}else if l == 0 {
-		return "", int64(index + 2)
-	}else {
-		endIndex = int64(index)+l
-		s = string(data[index:endIndex])
-		endIndex+=2
-		return
+		return ""
 	}
+	str := make([]byte,l)
+	read, err := c.br.Read(str)
+	c.br.ReadLine()
+	if err != nil {
+		return ""
+	}
+	return string(str[:read])
 }
-func (c RedisClient) parseArrays(data []byte)([]string,int64)  {
-	data = data[1:]
-	lenData := make([]byte,0)
-	index := 0
-	for  i,v:= range data{
-		if v ==0x0d {
-			index = i+2
-			break
-		}
-		lenData = append(lenData, v)
+func (c RedisClient) parseArrays() string  {
+	strLen, _, err := c.br.ReadLine()
+	if err != nil {
+		return ""
 	}
-	l, _ := strconv.ParseInt(string(lenData),10,64)
-	fmt.Println(l)
-	result := make([]string,0)
-	for index<len(data) {
-		resp,end := c.handleResp(data[index:])
-		result = append(result, string(resp))
-		index += int(end)+1
+	l, _ := strconv.ParseInt(string(strLen[1:]),10,64)
+	//result := make([]string,l)
+	arrays := strings.Builder{}
+	for i:=int64(0);i<l;i++ {
+		arrays.Write(c.handleResp())
+		arrays.Write(crlf)
+		//result = append(result, string(r))
 	}
-	return result, int64(index)
+	return arrays.String()
 }
 
 func (c *RedisClient) pipelineCMDAdd(cmd ...string)  {
