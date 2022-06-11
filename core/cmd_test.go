@@ -1,4 +1,4 @@
-package cmd
+package core
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ func TestReadCmdString(t *testing.T){
 }
 
 func TestGetCmdByte(t *testing.T)  {
-	b,_ := GetCmdByte("set name 123")
+	b,_, _ := GetCmdByte("set name 123")
 
 	fmt.Println(b)
 }

@@ -48,7 +48,7 @@ func login() core.RedisClient {
 
 	// 选择 db
 	resp := redisClient.ExecCMD("select",*db)
-	if string(resp)!="+OK" {
+	if string(resp)!="OK" {
 		// 选择db失败
 		panic("select database failed!")
 	}

@@ -1,4 +1,4 @@
-package cmd
+package core
 
 import (
 	"strconv"
@@ -8,8 +8,7 @@ import (
 var	crlf = []byte{0x0d,0x0a}
 
 var cmdMap = map[string]func(c string) []byte {
-	"set":set(),
-	"get":get(),
+
 }
 
 func GetCmdByte(c string) ([]byte,bool,string) {

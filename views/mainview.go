@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/greycodee/gredis/core"
-	"github.com/greycodee/gredis/core/cmd"
 	"github.com/rivo/tview"
 	"strings"
 )
@@ -143,7 +142,7 @@ func (t *TUI) inputDoneFunc(key tcell.Key)  {
 
 		// 执行命令
 		if strings.TrimSpace(t.cmdInputView.GetText()) != ""{
-			cmdByte,selectDB,db := cmd.GetCmdByte(t.cmdInputView.GetText())
+			cmdByte,selectDB,db := core.GetCmdByte(t.cmdInputView.GetText())
 
 			result := t.RedisServer.Conn.ExecCMDByte(cmdByte)
 			if selectDB && string(result)=="OK"{
