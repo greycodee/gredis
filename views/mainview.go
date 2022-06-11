@@ -79,6 +79,10 @@ func (t *TUI) StartTUI() {
 	t.keyInfoView = tview.NewTextView()
 	t.keyInfoView.SetBorder(true)
 	t.keyInfoView.SetTitle("keyInfo")
+	// 设置内容改变后，重新绘制界面
+	//t.keyInfoView.SetChangedFunc(func() {
+	//	app.Draw()
+	//})
 
 	// 初始化 Value 界面
 	t.keyValueView = tview.NewTextView()
@@ -114,7 +118,13 @@ func (t *TUI) StartTUI() {
 		return event
 	})
 
-
+	// 定时任务
+	//go func(t *TUI) {
+	//	for  {
+	//		time.Sleep(1*time.Second)
+	//		t.keyInfoView.SetText(time.Now().String())
+	//	}
+	//}(t)
 	err := app.SetRoot(t.mainPage,true).EnableMouse(false).Run()
 	if err != nil {
 		return

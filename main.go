@@ -52,5 +52,9 @@ func login() core.RedisClient {
 		// 选择db失败
 		panic("select database failed!")
 	}
+
+	// TODO 设置客户端连接名称
+
+	// TODO 获取服务器信息
 	return *redisClient
 }
